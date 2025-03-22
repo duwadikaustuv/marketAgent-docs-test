@@ -1,0 +1,20 @@
+---
+---
+
+# Overview
+
+import { Diagram } from "../components/Diagram";
+
+MarketAgents is a distributed **agent orchestration framework** designed to simulate and manage market scenarios with AI-driven agents. Key features include:
+
+- **Parallel LLM Inference**
+- **Immutable Conversation State**
+- **Integrated Tools**
+- **Flexible Outputs**
+
+<Diagram id="arch-overview">
+  graph TD A[Agent] -->|Interacts| B[Environment] B -->|Manages| C[Market
+  Mechanism] C -->|Records| D[Simulation Database]
+</Diagram>
+
+At its core, MarketAgents uses an entity-based system to ensure reproducibility and transparency...

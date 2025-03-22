@@ -1,0 +1,64 @@
+---
+
+# Contributing Guide
+
+We welcome contributions to the MarketAgents project! This guide will help you get started with the development workflow and understand our testing standards.
+
+## Development Workflow
+
+1. **Fork the repository**
+
+   - Click the "Fork" button on the top right of the GitHub repository
+
+2. **Clone your fork**
+
+   ```bash
+   git clone https://github.com/yourusername/marketagents.git
+   cd marketagents
+   ```
+
+3. **Create a feature branch**
+
+   ```bash
+   git checkout -b feature/awesome-feature
+   ```
+
+4. **Make your changes and commit them**
+
+   ```bash
+   git commit -m "Add awesome feature"
+   ```
+
+5. **Push to your fork**
+
+   ```bash
+   git push origin feature/awesome-feature
+   ```
+
+6. **Open a Pull Request**
+   - Navigate to the original repository and click "New Pull Request"
+   - Select your fork and branch
+
+## Testing Standards
+
+All code contributions should include appropriate tests. We use pytest for testing our Python code.
+
+```python
+def test_agent_creation():
+    agent = Agent()
+    assert agent is not None
+```
+
+Make sure to run the test suite before submitting your PR:
+
+```bash
+pytest
+```
+
+## Code Style
+
+We follow PEP 8 for Python code style. Please ensure your code is properly formatted before submitting a pull request.
+
+```
+
+```

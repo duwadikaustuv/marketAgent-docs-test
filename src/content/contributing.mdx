@@ -1,0 +1,118 @@
+# Contributing to MarketAgents
+
+<div className="contributing-section">
+
+## Getting Started
+
+Thank you for your interest in contributing to MarketAgents! This guide will help you get started with the contribution process.
+
+### Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- Python 3.8 or higher
+- Git
+- pip (Python package manager)
+
+### Setting Up Your Development Environment
+
+1. Fork the MarketAgents repository
+2. Clone your fork:
+   ```bash
+   git clone https://github.com/yourusername/marketagents.git
+   cd marketagents
+   ```
+3. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+4. Install development dependencies:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+## Development Workflow
+
+### 1. Create a New Branch
+
+Create a new branch for your feature or bug fix:
+
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-bug-fix
+```
+
+### 2. Make Your Changes
+
+- Write clear, concise code
+- Add tests for new features
+- Update documentation as needed
+- Follow the existing code style
+
+### 3. Run Tests
+
+Before submitting your changes, run the test suite:
+
+```bash
+pytest
+```
+
+### 4. Commit Your Changes
+
+Write clear commit messages that explain your changes:
+
+```bash
+git commit -m "feat: add new feature X"
+# or
+git commit -m "fix: resolve issue Y"
+```
+
+### 5. Push Your Changes
+
+Push your changes to your fork:
+
+```bash
+git push origin feature/your-feature-name
+```
+
+### 6. Create a Pull Request
+
+1. Go to the MarketAgents repository
+2. Click "New Pull Request"
+3. Select your branch
+4. Fill out the PR template
+5. Submit your PR
+
+## Code Style Guidelines
+
+- Follow PEP 8 guidelines
+- Use type hints
+- Write docstrings for all public functions and classes
+- Keep functions focused and small
+- Use meaningful variable names
+
+## Documentation
+
+When updating documentation:
+
+1. Update relevant MDX files in the `docs` directory
+2. Ensure all code examples are tested
+3. Add or update tests as needed
+4. Update the changelog
+
+## Getting Help
+
+If you need help or have questions:
+
+1. Check the existing documentation
+2. Open an issue for discussion
+3. Join our community chat
+4. Contact the maintainers
+
+## Thank You!
+
+We appreciate your contributions to MarketAgents. Together, we can make it even better!
+
+</div>

@@ -1,0 +1,341 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-50: #f0f9ff;
+  --primary-100: #e0f2fe;
+  --primary-200: #bae6fd;
+  --primary-300: #7dd3fc;
+  --primary-400: #38bdf8;
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
+  --primary-700: #0369a1;
+  --primary-800: #075985;
+  --primary-900: #0c4a6e;
+  --primary-950: #082f49;
+
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  --gray-950: #020617;
+
+  --shadow-color: 220 3% 15%;
+  --shadow-strength: 1%;
+
+  /* Code block variables */
+  --tw-prose-pre-bg: #f3f4f6;
+  --tw-prose-pre-code: #1f2937;
+  --tw-prose-code: #2563eb;
+}
+
+.dark {
+  --shadow-color: 220 40% 2%;
+  --shadow-strength: 25%;
+
+  /* Code block variables */
+  --tw-prose-pre-bg: #1f2937;
+  --tw-prose-pre-code: #f3f4f6;
+  --tw-prose-code: #60a5fa;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 overflow-x-hidden;
+    background-image: radial-gradient(
+        circle at 100% 0%,
+        rgba(var(--primary-500), 0.1) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 0% 100%,
+        rgba(var(--primary-500), 0.1) 0%,
+        transparent 50%
+      );
+    background-attachment: fixed;
+  }
+
+  pre {
+    @apply bg-gray-900 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto;
+    box-shadow: 0 4px 6px -1px rgb(var(--shadow-color) / var(--shadow-strength)),
+      0 2px 4px -2px rgb(var(--shadow-color) / var(--shadow-strength));
+  }
+
+  code {
+    @apply font-mono text-sm;
+  }
+
+  .prose {
+    @apply max-w-none w-full px-4 sm:px-6 lg:px-8 mx-auto overflow-x-hidden;
+  }
+
+  .prose > * {
+    @apply max-w-full;
+  }
+
+  .prose h1 {
+    @apply text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-gray-900 dark:text-white break-words;
+  }
+
+  .prose h2 {
+    @apply text-2xl sm:text-3xl font-semibold mt-8 sm:mt-12 mb-4 sm:mb-6 text-gray-800 dark:text-gray-100 break-words;
+  }
+
+  .prose h3 {
+    @apply text-xl sm:text-2xl font-semibold mt-6 sm:mt-8 mb-3 sm:mb-4 text-gray-800 dark:text-gray-100 break-words;
+  }
+
+  .prose p {
+    @apply text-base sm:text-lg text-gray-700 dark:text-gray-300 leading-relaxed mb-4 sm:mb-6 break-words;
+  }
+
+  .prose a {
+    @apply text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors duration-200 break-words;
+  }
+
+  .prose ul {
+    @apply list-disc list-inside text-base sm:text-lg text-gray-700 dark:text-gray-300 mb-4 sm:mb-6 space-y-2 break-words;
+  }
+
+  .prose ol {
+    @apply list-decimal list-inside text-base sm:text-lg text-gray-700 dark:text-gray-300 mb-4 sm:mb-6 space-y-2 break-words;
+  }
+
+  .prose li {
+    @apply mb-2 break-words;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-primary-500 dark:border-primary-400 pl-4 italic text-base sm:text-lg text-gray-700 dark:text-gray-300 my-4 sm:my-6 break-words;
+  }
+
+  .prose code {
+    @apply bg-gray-100 dark:bg-gray-800 rounded px-1.5 py-0.5 text-sm font-mono break-words;
+  }
+
+  .prose pre {
+    @apply bg-gray-100 dark:bg-gray-800 rounded-lg p-3 sm:p-4 my-4 sm:my-6 w-full overflow-x-auto;
+  }
+
+  .prose pre code {
+    @apply bg-transparent p-0 text-sm sm:text-base whitespace-pre-wrap break-words;
+  }
+
+  .prose img {
+    @apply rounded-lg shadow-lg my-4 sm:my-6 max-w-full h-auto;
+  }
+
+  .prose table {
+    @apply w-full border-collapse my-4 sm:my-6 overflow-x-auto block;
+  }
+
+  .prose th {
+    @apply bg-gray-100 dark:bg-gray-800 px-3 sm:px-4 py-2 text-left font-semibold text-sm sm:text-base whitespace-nowrap;
+  }
+
+  .prose td {
+    @apply border border-gray-200 dark:border-gray-700 px-3 sm:px-4 py-2 text-sm sm:text-base whitespace-nowrap;
+  }
+
+  /* Additional responsive styles for specific sections */
+  .prose .license-section,
+  .prose .contributing-section {
+    @apply space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden;
+  }
+
+  .prose .contributing-section h2 {
+    @apply text-xl sm:text-2xl font-semibold mt-6 sm:mt-8 mb-3 sm:mb-4 break-words;
+  }
+
+  .prose .contributing-section p {
+    @apply text-sm sm:text-base mb-3 sm:mb-4 break-words;
+  }
+
+  .prose .contributing-section ul {
+    @apply text-sm sm:text-base mb-3 sm:mb-4 break-words;
+  }
+
+  .prose .contributing-section li {
+    @apply mb-1.5 sm:mb-2 break-words;
+  }
+
+  /* Code blocks styling */
+  pre {
+    @apply overflow-x-auto max-w-full rounded-lg;
+  }
+
+  pre code {
+    @apply block p-4 font-mono text-sm sm:text-base whitespace-pre-wrap break-words;
+  }
+
+  @media (max-width: 640px) {
+    pre {
+      @apply text-sm leading-relaxed;
+    }
+
+    pre code {
+      @apply p-3;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl;
+  }
+
+  .button {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  }
+
+  .button-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+  }
+
+  .button-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-400 focus:border-transparent transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+
+  .bg-grid-pattern {
+    background-image: linear-gradient(
+        to right,
+        rgb(var(--shadow-color) / var(--shadow-strength)) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        rgb(var(--shadow-color) / var(--shadow-strength)) 1px,
+        transparent 1px
+      );
+    background-size: 24px 24px;
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes neon-pulse {
+  0%,
+  100% {
+    text-shadow: 0 0 10px rgba(var(--primary-500), 0.5),
+      0 0 20px rgba(var(--primary-500), 0.3),
+      0 0 30px rgba(var(--primary-500), 0.1);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(var(--primary-500), 0.8),
+      0 0 30px rgba(var(--primary-500), 0.5),
+      0 0 40px rgba(var(--primary-500), 0.3);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+.animate-ripple {
+  animation: ripple 1s ease-out;
+}
+
+/* Very basic syntax highlighting */
+.language-javascript .keyword,
+.language-typescript .keyword,
+.language-python .keyword {
+  color: #9333ea; /* Purple */
+}
+
+.language-javascript .string,
+.language-typescript .string,
+.language-python .string {
+  color: #16a34a; /* Green */
+}
+
+.language-javascript .number,
+.language-typescript .number,
+.language-python .number {
+  color: #f59e0b; /* Amber */
+}
+
+.language-javascript .comment,
+.language-typescript .comment,
+.language-python .comment {
+  color: #71717a; /* Gray */
+  font-style: italic;
+}
+
+.dark .language-javascript .keyword,
+.dark .language-typescript .keyword,
+.dark .language-python .keyword {
+  color: #c084fc; /* Light Purple */
+}
+
+.dark .language-javascript .string,
+.dark .language-typescript .string,
+.dark .language-python .string {
+  color: #4ade80; /* Light Green */
+}
+
+.dark .language-javascript .number,
+.dark .language-typescript .number,
+.dark .language-python .number {
+  color: #fbbf24; /* Light Amber */
+}
+
+.dark .language-javascript .comment,
+.dark .language-typescript .comment,
+.dark .language-python .comment {
+  color: #a1a1aa; /* Light Gray */
+}

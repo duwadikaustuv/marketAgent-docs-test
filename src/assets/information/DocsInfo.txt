@@ -1,0 +1,606 @@
+I will create structured `.mdx` files for each section of your MarketAgents documentation. These will be formatted for a professional technical documentation website, with extracted and refined content from your README files, well-annotated code examples, and a clean, developer-friendly structure. I will also ensure the theme aligns with the futuristic AI and finance-inspired aesthetic you've described.
+
+Once the `.mdx` files are ready, I will provide them for your review.
+
+**Introduction.mdx**:
+```mdx
+---
+title: Introduction
+---
+
+MarketAgents is a distributed **agent orchestration framework** designed to simulate and manage market scenarios with AI-driven agents. It enables you to create autonomous *market agents* that operate with economic incentives, leveraging large language models (LLMs) for decision-making. Key features include:
+
+- **Parallel LLM Inference:** Execute multiple AI model calls concurrently with built-in rate limiting for scalability.
+- **Immutable Conversation State:** Every interaction is stored as a versioned entity, ensuring a complete traceable history of agent decisions.
+- **Integrated Tools:** Agents can invoke Python functions or enforce JSON schema outputs (tools) as part of their reasoning process.
+- **Flexible Outputs:** Support for plain text, structured JSON, or multi-step workflow outputs to suit complex tasks.
+
+ ([image]()) *MarketAgents employs a futuristic neon-themed design, reflecting its blend of cutting-edge AI and finance technology.*
+
+At its core, MarketAgents uses an entity-based system (inspired by the underlying **MultiInference** engine) to ensure that changes to any agent, prompt, or configuration create a new immutable record. This approach guarantees reproducibility and transparency in how agent states evolve over time. In the following sections, we will guide you through setting up the framework, explain its core concepts, demonstrate usage with examples, delve into advanced capabilities, and outline how you can contribute.
+```
+
+**Installation.mdx**:
+```mdx
+---
+title: Installation
+---
+
+To start using MarketAgents, follow these steps to install and configure the project on your machine.
+
+1. **Clone the Repository:** Clone the MarketAgents repository from GitHub and navigate into the project directory.
+   ```sh
+   # Clone the repository from GitHub
+   git clone https://github.com/marketagents-ai/MarketAgents.git
+   cd MarketAgents
+   ```
+
+2. **Install in Editable Mode:** Install the package in development (editable) mode so that changes take effect without reinstalling.
+   ```sh
+   # Install the package in editable (development) mode
+   pip install -e .
+   ```
+
+3. **Install Dependencies:** Install all required Python dependencies for the project.
+   ```sh
+   # Install required dependencies from the requirements file
+   pip install -r requirements.txt
+   ```
+
+4. **Configure the Database (Optional):** If you plan to use the database agent component, navigate to `market_agents/agents/db` and follow the instructions in that README to set up the database requirements (this may involve configuring a database or other services).
+
+5. **Set Environment Variables:** Copy the example environment configuration and update it with your own API keys and settings.
+   ```sh
+   # Copy the sample environment file and create a local .env file
+   cp .env.example .env
+   ```
+   *Open the newly created `.env` file and provide the necessary API keys and configuration values (e.g., API keys for LLM providers, database URLs, etc.).*
+
+6. **Edit Orchestrator Config:** Adjust the orchestrator settings to match your environment. Open the file `market_agents/orchestrator_config.yaml` in a text editor and modify it according to your needs (for example, set your default LLM provider, concurrency limits, or any agent-specific settings).
+
+Once these steps are complete, the MarketAgents package is installed and configured. You can proceed to run examples or integrate MarketAgents into your own application.
+```
+
+**CoreConcepts.mdx**:
+```mdx
+---
+title: Core Concepts
+---
+
+Understanding the core architecture of MarketAgents is crucial for effectively building and managing agents. MarketAgents revolves around a few fundamental concepts: **Entities**, **Registries**, the **Chat Thread** model, **Tools**, and a **Concurrent Execution** engine. These concepts work together to ensure the system is robust, traceable, and flexible.
+
+## Entities and Versioning
+
+All persistent objects in MarketAgents (such as chat threads, messages, or tools) subclass an `Entity`. Each Entity has:
+- **`id`** – a unique identifier (UUID) for this specific version of the object.
+- **`lineage_id`** – a UUID grouping all versions (the entire history) of the object.
+- **`parent_id`** – a reference to the immediate predecessor object's id (the previous version).
+- Automatic **forking** behavior: whenever you modify an entity, a new version is created with a new `id`.
+
+When you retrieve an entity from a registry (explained below), the system provides a *warm copy* (a mutable instance). Any changes to this warm copy (detected by comparing it to an internal *cold snapshot*) will trigger a fork, producing a new immutable record. 
+
+**Why this matters:** The Entity model ensures an immutable, fully traceable record of changes across the system. You can always inspect or revert to earlier versions of conversations or data, which is especially important in a financial market context where auditability is key.
+
+## Registries
+
+MarketAgents maintains registries to keep track of entities and tools:
+
+1. **EntityRegistry:** Stores the immutable snapshots of each Entity. Every time an Entity is created or forked (new version), it’s recorded in the registry. This allows you to retrieve any version by its `id` and to reconstruct the full lineage of changes for that entity.
+2. **CallableRegistry:** Stores references to tool callables (Python functions that agents can use). When you register a function as a tool, it’s indexed here, and the system can automatically generate JSON schemas for the function’s inputs and outputs (using type hints or Pydantic models). Tools can be synchronous or asynchronous functions. 
+
+These registries enable dynamic lookup and management of state (for entities) and capabilities (for tools) throughout the system.
+
+## Chat Thread Model
+
+The central object for multi-turn conversations is the `ChatThread` (which is a type of Entity). A `ChatThread` represents an ongoing conversation or agent session and contains:
+- A **history**: a list of `ChatMessage` entities representing the dialogue (prompts and responses) so far.
+- An optional **system_prompt**: a special initial instruction or context for the conversation (e.g., setting the role or behavior of the agent).
+- An **llm_config**: an `LLMConfig` entity specifying which language model to use, and parameters like model name, token limits, temperature, etc.
+- A list of **tools**: any `CallableTool` or `StructuredTool` instances attached to this chat, which the agent is allowed to use during the conversation.
+- A **forced_output** (optional): a specific tool or schema that the LLM must use to format its response (used when you expect the answer in a particular format or via a specific tool).
+- A **workflow_step** (advanced use): an index to enforce multi-step tool workflows (used when orchestrating a sequence of tool calls as the output, explained later).
+
+Because `ChatThread` inherits from `Entity`, any change (like adding a message or updating the config) will create a new version, preserving the old state.
+
+## Tools
+
+In MarketAgents, "tools" are functions or schemas that an agent can call as part of its reasoning process. They are represented by specialized Entities:
+
+- **CallableTool:** A tool backed by a Python function. You register a Python function (with type-annotated parameters and return value, or with a Pydantic model) as a CallableTool. The function’s name and docstring inform the LLM about its purpose. When the LLM decides to use this tool, the framework will handle converting the LLM's request into a Python function call (parsing arguments from JSON, executing the function, and returning the result).
+- **StructuredTool:** A tool defined by a JSON schema. This isn’t a function the LLM calls; instead, the LLM is instructed to output data in a format that matches the schema. The framework will then validate the LLM’s output against the schema (ensuring the response is well-formed).
+
+Tools are how MarketAgents enable actions and structured outputs. In a conversation, tools appear to the LLM like available functions (following the OpenAI or Anthropic function call interface). By attaching tools to a chat thread, you give the agent the ability to perform calculations, fetch data, or enforce output structure beyond what the base LLM can do on its own.
+
+## Concurrent Execution
+
+MarketAgents is built to handle multiple requests in parallel, which is essential for simulating multiple agents or processing many tasks concurrently. The **InferenceOrchestrator** (part of the underlying MultiInference engine) manages asynchronous calls to LLM providers. It ensures that parallel requests obey rate limits and efficiently utilizes resources.
+
+In practice, the orchestrator reads a batch of requests (each request represents an LLM invocation with a certain prompt and configuration) and sends them out concurrently. It takes care of:
+- Respecting provider rate limits (e.g., max requests per minute or tokens per minute for each API).
+- Retrying failed requests or those that hit rate-limit errors.
+- Queuing and scheduling requests so that bursts are handled gracefully.
+
+**High-level flow for concurrent inference:**
+1. You compile a list of requests (each usually corresponds to one ChatThread needing an LLM completion).
+2. The orchestrator sends these requests in parallel, subject to the concurrency and rate limits set for each provider.
+3. Responses are collected and returned (and can also be logged to files for further analysis).
+
+This concurrent execution model means you can simulate or coordinate many market agents acting at once, without manually juggling asyncio tasks or threads. The orchestrator abstracts that complexity away.
+```
+
+**Usage.mdx**:
+```mdx
+---
+title: Usage
+---
+
+This section demonstrates how to use MarketAgents through practical examples. We start with a minimal example of running a single agent query, then explore more complex usage such as parallel queries, tool usage, structured outputs, and workflow-based interactions.
+
+### Minimum Example
+
+Below is a minimal example showing how to create a single chat thread (conversation) and get a completion from an LLM:
+
+```python
+import asyncio
+from minference.threads.inference import InferenceOrchestrator
+from minference.threads.models import (
+    ChatThread, 
+    LLMConfig, 
+    LLMClient, 
+    ResponseFormat, 
+    SystemPrompt
+)
+
+# Define an asynchronous main function to run the example
+async def main():
+    # Initialize the orchestrator (handles concurrency & provider API keys from env)
+    orchestrator = InferenceOrchestrator()
+
+    # Create a new chat thread with a system prompt and a user message
+    chat = ChatThread(
+        system_prompt=SystemPrompt(
+            content="You are a helpful AI assistant. Provide short, direct answers.",
+            name="assistant_role"
+        ),
+        new_message="How's the weather today?",
+        llm_config=LLMConfig(
+            client=LLMClient.openai,        # use OpenAI as the LLM provider
+            model="gpt-4o-mini",            # specify the model name
+            response_format=ResponseFormat.text  # expect a plain text response
+        )
+    )
+
+    # Run the chat thread through the orchestrator to get a completion
+    outputs = await orchestrator.run_parallel_ai_completion([chat])
+
+    # The result is a list of outputs (one per chat thread request)
+    for out in outputs:
+        print("Content:", out.content)
+
+# Execute the async main function
+asyncio.run(main())
+```
+
+In this example, we created a `ChatThread` with a system prompt (which sets the AI's role) and a new user message. We configured it to use a specific model via `LLMConfig`. The `InferenceOrchestrator` takes care of actually sending the prompt to the LLM and retrieving the result. The output printed will be the AI's response content.
+
+### ChatThread and LLMConfig
+
+Each `ChatThread` requires an `LLMConfig` to tell it *which* model to use and how. Here’s an example of creating a chat thread with a specific configuration:
+
+```python
+chat = ChatThread(
+    name="my_first_thread",
+    system_prompt=SystemPrompt(content="You are an assistant that responds in JSON only."),
+    new_message="Give me a short summary of SpaceX history.",
+    llm_config=LLMConfig(
+        client=LLMClient.openai,
+        model="gpt-3.5-turbo",
+        max_tokens=200,
+        temperature=0.7,
+        response_format=ResponseFormat.json_object
+    )
+)
+```
+
+In this snippet, we set up a chat where the assistant is instructed to answer strictly in JSON format. We chose the OpenAI GPT-3.5 Turbo model with a token limit and a temperature of 0.7 for some randomness. The `ResponseFormat.json_object` tells the orchestrator that we expect a direct JSON object as output. This thread can then be passed to the orchestrator for completion similar to the previous example.
+
+### Running Parallel Inference
+
+One of the strengths of MarketAgents (via the MultiInference orchestrator) is running multiple queries in parallel. You can batch multiple `ChatThread` instances and execute them concurrently, even with different LLM providers or models:
+
+```python
+# Define two chat threads with different prompts and even different providers
+chat_1 = ChatThread(
+    system_prompt=SystemPrompt(content="System prompt for agent 1"),
+    new_message="Hello from GPT-4 agent.",
+    llm_config=LLMConfig(
+        client=LLMClient.openai,
+        model="gpt-4o-mini",
+        response_format=ResponseFormat.text
+    )
+)
+
+chat_2 = ChatThread(
+    system_prompt=SystemPrompt(content="System prompt for agent 2"),
+    new_message="Hello from Claude agent.",
+    llm_config=LLMConfig(
+        client=LLMClient.anthropic,
+        model="claude-3-5-sonnet-latest",
+        response_format=ResponseFormat.text
+    )
+)
+
+# Run both chat threads in parallel using the orchestrator
+orchestrator = InferenceOrchestrator()
+outputs = await orchestrator.run_parallel_ai_completion([chat_1, chat_2])
+for r in outputs:
+    print(f"{r.llm_client} -> {r.content}")
+```
+
+In this example, `chat_1` might use an OpenAI GPT-4 model while `chat_2` uses an Anthropic Claude model. By passing both to `run_parallel_ai_completion`, they are executed at the same time. The loop at the end prints out which LLM client produced which content, illustrating that multiple providers can be handled together.
+
+### Tool Integration
+
+Tools let your agents execute functions. This is useful when the AI needs to perform calculations or fetch information beyond its built-in knowledge. To integrate a tool:
+
+1. **Implement a Python function** with type hints (or a Pydantic model) for its inputs and output.
+2. **Wrap it as a `CallableTool`.**
+3. **Attach the tool to a ChatThread.**
+4. **Use an appropriate response format** so the LLM knows it can call the tool.
+
+For example, suppose we want the agent to compute basic statistics on a list of numbers:
+
+```python
+import statistics
+from pydantic import BaseModel
+from typing import List
+from minference.threads.models import ChatThread, LLMConfig, LLMClient, ResponseFormat, CallableTool
+
+# Define input and output data models for the tool
+class MyInput(BaseModel):
+    data: List[float]
+
+class MyOutput(BaseModel):
+    mean: float
+    stdev: float
+
+# Define the tool function using the data models
+def compute_stats(input_data: MyInput) -> MyOutput:
+    return MyOutput(
+        mean=statistics.mean(input_data.data),
+        stdev=statistics.pstdev(input_data.data)
+    )
+
+# Register the function as a callable tool
+my_tool = CallableTool.from_callable(compute_stats, name="compute_stats")
+
+# Create a chat thread and attach the tool
+chat = ChatThread(
+    new_message="Compute stats for [1,2,3,4,5].",
+    llm_config=LLMConfig(
+        client=LLMClient.openai,
+        model="gpt-4o-mini",
+        response_format=ResponseFormat.tool    # indicate the model should use a tool
+    ),
+    forced_output=my_tool  # force the LLM to use our tool for the response
+)
+
+# Run the chat thread; the LLM will call the tool instead of answering directly
+orchestrator = InferenceOrchestrator()
+result = await orchestrator.run_parallel_ai_completion([chat])
+```
+
+When using `response_format=ResponseFormat.tool` (or `auto_tools` for allowing multiple tools), the LLM knows it should call the provided tool rather than just answer with text. In our example, the model will output a signal to use `compute_stats` with the given list, and the framework will execute the `compute_stats` Python function, then return the result to the chat thread as the final answer.
+
+### Structured Output
+
+Sometimes we want the LLM’s answer in a particular JSON format. Instead of a function, we can enforce a response schema using a `StructuredTool`. A StructuredTool doesn’t execute code, but it provides a JSON schema that the LLM must follow.
+
+```python
+from minference.threads.models import StructuredTool
+
+# Define a JSON schema for the desired output structure
+json_schema = {
+    "type": "object",
+    "properties": {
+        "analysis": {"type": "string"},
+        "score": {"type": "number"}
+    },
+    "required": ["analysis", "score"]
+}
+
+# Create a StructuredTool with the schema
+structured_tool = StructuredTool(
+    name="analysis_schema",
+    description="Enforce analysis output with a numeric score",
+    json_schema=json_schema,
+    strict_schema=True
+)
+
+# Create a chat thread expecting a structured JSON output
+chat = ChatThread(
+    new_message="Analyze sentiment of 'Hello World'",
+    llm_config=LLMConfig(
+        client=LLMClient.openai,
+        model="gpt-4o-mini",
+        response_format=ResponseFormat.structured_output  # expecting structured JSON
+    ),
+    forced_output=structured_tool
+)
+
+# Run the chat; the LLM will attempt to output JSON matching the schema
+await orchestrator.run_parallel_ai_completion([chat])
+```
+
+In the above code, we defined a schema that requires an object with an "analysis" string and a "score" number. By setting `response_format=structured_output` and providing the `structured_tool`, the LLM is guided to produce output conforming to that schema. The orchestrator will validate the JSON. If the output does not match the schema, it will log an error or handle it as configured, rather than returning invalid data.
+
+### Workflow Execution
+
+MarketAgents can also orchestrate multi-step tool usage in a single conversation turn. By setting `response_format=ResponseFormat.workflow`, you allow the LLM to call a sequence of tools one after another (a workflow). The chat thread will maintain a `workflow_step` index to track progress through the tools list.
+
+For example, suppose we have a workflow of three steps, each implemented by a separate tool:
+
+```python
+tools = [
+    CallableTool.from_callable(func_step1),
+    CallableTool.from_callable(func_step2),
+    CallableTool.from_callable(func_step3)
+]
+
+chat = ChatThread(
+    new_message="Perform a three-step data processing workflow on input X.",
+    llm_config=LLMConfig(
+        client=LLMClient.openai,
+        model="gpt-4o-mini",
+        response_format=ResponseFormat.workflow  # enable multi-step workflow mode
+    ),
+    tools=tools
+)
+
+# The orchestrator will ensure the LLM calls tools[0], then tools[1], then tools[2] in order
+await orchestrator.run_parallel_ai_completion([chat])
+```
+
+In workflow mode, the LLM’s answer isn't a final result but instructions to invoke the next tool in sequence. After each tool execution, the framework inserts the tool’s output into the chat history and increments `workflow_step`, then prompts the LLM again. This continues until all tools have been used in order, at which point the final result can be returned. This feature is powerful for scenarios where an agent needs to perform a series of dependent actions (for instance, fetch data, analyze it, then make a decision).
+```
+
+**AdvancedFeatures.mdx**:
+```mdx
+---
+title: Advanced Features
+---
+
+MarketAgents offers advanced capabilities that give you finer control and insight into your agents and how the system operates.
+
+## Detailed Entity Versioning
+
+Because every `ChatThread`, `ChatMessage`, `LLMConfig`, etc., is an `Entity`, the framework tracks all changes. For example:
+
+```python
+old_id = chat.id
+chat.llm_config.temperature = 0.9  # modify the warm copy of the chat's config
+# Next time we register or run something, a new version with a new ID is created
+new_id = chat.id
+```
+
+In this snippet, we take an existing `chat` (ChatThread) and change a parameter (`temperature`) in its LLM config. We record the `id` before and after. Internally, as soon as we use this modified `chat` (for example, by registering it or running it), the system will automatically **fork** the entity. The new version gets a different `id` (`new_id`), while the original remains recorded under `old_id`. This ensures you never accidentally override an earlier state.
+
+You can inspect the history of an entity using the registry:
+
+```python
+from minference.ecs.entity import EntityRegistry
+
+lineage = EntityRegistry.get_lineage_tree_sorted(chat.lineage_id)
+print(lineage["sorted_ids"])  # list all version IDs, sorted by creation time
+```
+
+Here we retrieve the entire lineage (history tree) of the chat by its `lineage_id`. The `sorted_ids` give an ordered list of all version IDs for that chat, so you can trace how it evolved.
+
+## Lineage Visualization (Mermaid)
+
+To better visualize the version history of an entity, MarketAgents can output a diagram in Mermaid format. For example, calling:
+
+```python
+EntityRegistry.get_lineage_mermaid(chat.lineage_id)
+```
+
+will produce a Mermaid graph definition that shows the ancestor–descendant relationships between entity versions. You can paste this output into a Mermaid renderer to get a visual graph. For instance, a Mermaid diagram for a chat thread's lineage might look like:
+
+```mermaid
+graph TD
+  A["ChatThread\nID=4b092f51\n(old version)"] -->|"fork"| B["ChatThread\nID=b2c63004\n(new version)"]
+  B -->|"fork"| C["ChatThread\nID=8407cb50\n..."]
+  C -->|"fork"| D["ChatThread\nID=52077002\n..."]
+  D -->|"fork"| E["ChatThread\nID=34adbae5\n..."]
+  E -->|"fork"| F["ChatThread\nID=fada621e\n(latest)"]
+```
+
+*(The above is a simplified illustration of a version lineage; each node represents a version of the ChatThread and the arrows (`fork`) show the progression.)*
+
+This ability to visualize version history is useful for debugging and understanding how a particular conversation or agent state evolved over time.
+
+## Implementing Custom Tools
+
+While we saw how to create tools from existing Python functions, you can also dynamically create tools from source code strings. This can be useful in advanced scenarios (for example, generating a tool on the fly). For instance:
+
+```python
+from minference.threads.models import CallableTool
+
+tool = CallableTool.from_source(
+    source="""
+def multiply_and_add(x: float, y: float, z: float) -> float:
+    return x*y + z
+""",
+    name="multiply_and_add"
+)
+```
+
+This snippet creates a `CallableTool` directly from a string of Python code. The system will parse the function, infer its input and output types, and make it available as a tool named `"multiply_and_add"`. You could then attach this tool to a chat thread as shown in the usage section. Under the hood, MarketAgents automatically derives JSON schemas for the function’s arguments and return value using the function’s type hints.
+
+Of course, you can also create a `CallableTool` from any normal Python function definition (using `CallableTool.from_callable` as shown earlier). Both approaches let the LLM reliably invoke custom logic during a conversation.
+
+## Pydantic-Based Schemas
+
+For convenience, if you have data models defined with Pydantic, you can directly create a StructuredTool from those models. This saves you from manually writing JSON schemas. For example:
+
+```python
+from pydantic import BaseModel
+from minference.threads.models import StructuredTool
+
+class AnalysisOutput(BaseModel):
+    text: str
+    confidence: float
+
+structured_tool = StructuredTool.from_pydantic(
+    model=AnalysisOutput,
+    name="analysis_output",
+    description="Generates an analysis text with a confidence score"
+)
+```
+
+Here, `AnalysisOutput` is a Pydantic model with two fields. By calling `StructuredTool.from_pydantic`, we automatically generate a StructuredTool that expects the LLM to output JSON matching the `AnalysisOutput` schema. The `description` helps the LLM understand what this output represents. You can then use `structured_tool` in a chat thread’s `forced_output` just like any other tool to enforce that the answer follows this model.
+
+## Customizing Provider Limits
+
+Each LLM provider (OpenAI, Anthropic, etc.) comes with default rate limits in the orchestrator (for example, number of requests per minute, or tokens per minute). MarketAgents allows you to override these limits if needed. Suppose we want to increase the limits for the OpenAI client:
+
+```python
+from minference.threads.inference import InferenceOrchestrator, RequestLimits
+
+# Define custom rate limits for OpenAI
+oai_limits = RequestLimits(
+    max_requests_per_minute=1000,
+    max_tokens_per_minute=500000,
+    provider="openai"
+)
+
+# Initialize orchestrator with the custom limits for OpenAI
+orchestrator = InferenceOrchestrator(oai_request_limits=oai_limits)
+```
+
+In this code, we create a `RequestLimits` object with very high thresholds for the OpenAI provider and then pass it to the `InferenceOrchestrator`. This ensures that when we run parallel requests to OpenAI's API through this orchestrator, it will use the new limits instead of the defaults. You can similarly set limits for other providers (`anthropic_request_limits`, etc.) when constructing the orchestrator.
+
+Adjusting provider limits can be useful in testing or in controlled environments, but be careful to stay within the actual quotas of your API keys to avoid hitting real-world rate limits.
+
+```
+
+**APIReference.mdx**:
+```mdx
+---
+title: API Reference
+---
+
+This reference section provides an overview of important classes, enumerations, and the project structure for MarketAgents. It serves as a quick guide to the available components and how the codebase is organized.
+
+## LLM Clients
+
+`LLMClient` is an enumeration of supported Large Language Model providers (and backend options). The following client identifiers are available:
+
+- `openai` — The OpenAI Chat API (e.g., GPT-3.5, GPT-4).
+- `anthropic` — Anthropic’s Claude API.
+- `vllm` — vLLM (an open-source, self-hosted LLM serving system).
+- `litellm` — LiteLLM or other local lightweight LLM endpoints.
+- `openrouter` — OpenRouter (a proxy that is OpenAI-compatible, can route requests to multiple models).
+
+These enums are used in `LLMConfig.client` to specify which backend to use for a given chat thread.
+
+## Response Formats
+
+`ResponseFormat` is an enumeration that defines how the model’s output should be interpreted or structured by the system. The main options include:
+
+- **`text`** – Plain text response from the LLM with no special formatting.
+- **`json_beg`** – The LLM is instructed to output a JSON response enclosed in Markdown code fences (for cases where you want the model to yield JSON, starting with ```json).
+- **`json_object`** – Expect a direct JSON object as the response (no code fences, just raw JSON).
+- **`structured_output`** – The LLM must produce JSON that matches a provided `StructuredTool` schema (as seen in *Structured Output* usage).
+- **`tool`** – The LLM should call a single `CallableTool` to produce its answer (the result of the tool is the answer).
+- **`auto_tools`** – The LLM can choose to call any of the available tools (from a list) if it decides to, possibly calling none if not needed.
+- **`workflow`** – The LLM must execute a sequence of tools one after another (workflow mode), rather than giving an answer directly.
+
+These formats guide the behavior of the orchestrator and the LLM’s output. By choosing the appropriate `ResponseFormat`, you inform the system how to handle the response (e.g., to expect a JSON or to wait for tool invocation steps).
+
+## Project Layout
+
+The MarketAgents (and underlying MultiInference) project is structured into several modules. Here is a brief overview of key files and directories:
+
+- **`ecs/`** – *Entity Component System* related code.
+  - `entity.py` – Defines the `Entity` base class and the `EntityRegistry` (including logic for forking and tracking entities).
+  - `caregistry.py` – Defines the `CallableRegistry`, which registers tool functions and generates schemas for them.
+- **`threads/`** – Conversational threads and orchestration logic.
+  - `models.py` – Contains core classes such as `ChatThread`, `ChatMessage`, `LLMConfig`, `CallableTool`, `StructuredTool`, etc., which define the data models for chats and tools.
+  - `inference.py` – Implements the `InferenceOrchestrator` and the concurrency logic that schedules and executes LLM calls.
+- **`oai_parallel.py`** – The parallel request engine for OpenAI (and similar) APIs. Handles batching of requests, applying rate limits, and retry mechanisms for API calls.
+- **`clients/`** – Client-specific request/response definitions.
+  - `requests.py` – Utilities for converting ChatThreads into the raw JSON payloads expected by the LLM provider APIs, and for validating responses.
+  - `clients_models.py` – Pydantic models that describe the request and response formats for different providers (e.g., OpenAI, Anthropic), used internally for validation and structuring.
+
+This layout helps in navigating the codebase: for example, if you're looking to extend how a new provider is integrated, the `clients/` directory is a good place to start; if you want to understand how concurrency is handled, review `threads/inference.py`, and so on.
+
+```
+
+**ContributingGuide.mdx**:
+```mdx
+---
+title: Contributing Guide
+---
+
+Contributions to MarketAgents are welcome and appreciated! Whether it's fixing bugs, adding new features, or improving documentation, we encourage you to get involved. Please keep in mind the following guidelines when contributing:
+
+- **Align with Core Design:** MarketAgents relies on immutable entities and a structured approach to versioning. New contributions should respect and preserve this design principle.
+- **Quality and Testing:** Ensure that your code contributions include appropriate tests. If you add a new feature, include unit tests or examples that demonstrate it. Run existing tests to make sure your changes don’t break anything.
+- **Code Style:** Follow the coding style conventions of the project. (Refer to `CONTRIBUTING.md` in the repository for any specific guidelines on code format, naming, etc., if available.)
+- **Documentation:** Update the documentation (or docstrings) if your change affects how users or developers interact with MarketAgents.
+
+### How to Contribute
+
+1. **Fork the Repository:** Click the "Fork" button on the MarketAgents repository to create your own copy of the project.
+2. **Clone Your Fork:** Clone your fork to your local development environment and create a new branch for your feature or fix.
+   ```sh
+   git clone https://github.com/<your-username>/MarketAgents.git
+   git checkout -b my-new-feature
+   ```
+3. **Implement Your Changes:** Make your code changes or additions. Try to keep the changes focused on one issue or feature per branch.
+4. **Write Tests:** If applicable, write tests for new functionality or to reproduce the bug you are fixing. Ensure all tests (old and new) pass.
+5. **Commit Respectfully:** Commit your changes with clear and descriptive commit messages. It’s good practice to explain *why* the change was made.
+6. **Push and Open a PR:** Push your branch to your fork on GitHub, and open a Pull Request against the main MarketAgents repository. Fill out the PR template or description, explaining your changes and any important details for reviewers.
+7. **Discuss and Iterate:** Be responsive to any code review feedback. The maintainers may request changes or offer suggestions. Collaboration will lead to a better outcome.
+8. **Merge:** Once approved by maintainers, your contribution will be merged into the project.
+
+For more details, see the project's contributing guidelines in the `CONTRIBUTING.md` file in the repository. By contributing, you agree that your contributions will be licensed under the same MIT License that covers the project.
+
+Thank you for helping improve MarketAgents!
+```
+
+**License.mdx**:
+```mdx
+---
+title: License
+---
+
+MarketAgents is distributed under the **MIT License**. All contributions to this project are also covered by the MIT License.
+
+```text
+MIT License
+
+Copyright (c) 2023 MarketAgents AI
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal 
+in the Software without restriction, including without limitation the rights 
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell 
+copies of the Software, and to permit persons to whom the Software is 
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in 
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES of MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
+THE SOFTWARE.
+```
+
+*This license text is an excerpt. For the full license, see the `LICENSE` file in the repository.*
+```

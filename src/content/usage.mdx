@@ -1,0 +1,53 @@
+---
+---
+
+# Usage Guide
+
+MarketAgents provides a simple API for creating and managing agents for financial market analysis and trading.
+
+## Basic Example
+
+Here's a simple example of how to create an agent and query it:
+
+```python
+from market_agents import Orchestrator
+
+orchestrator = Orchestrator()
+agent = orchestrator.create_agent()
+response = agent.query("Market analysis for Q3")
+
+print(response)
+```
+
+## Advanced Workflow
+
+The typical workflow for using MarketAgents follows these key steps:
+
+<Diagram id="workflow-example">
+  graph LR A[Data Collection] --> B[Analysis] B --> C[Decision Making] C -->
+  D[Execution]
+</Diagram>
+
+## Custom Agents
+
+You can create specialized agents for different tasks:
+
+```python
+# Create a sentiment analysis agent
+sentiment_agent = orchestrator.create_agent(
+    name="Sentiment Analyzer",
+    model="gpt-4",
+    tools=["news_search", "sentiment_analysis"]
+)
+
+# Create a trading agent
+trading_agent = orchestrator.create_agent(
+    name="Trading Bot",
+    model="claude-3-opus",
+    tools=["market_data", "trade_execution"]
+)
+```
+
+```
+
+```

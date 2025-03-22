@@ -1,0 +1,48 @@
+---
+
+# API Reference
+
+This reference section provides an overview of important classes, enumerations, and the project structure for MarketAgents. It serves as a quick guide to the available components and how the codebase is organized.
+
+## LLM Clients
+
+`LLMClient` is an enumeration of supported Large Language Model providers (and backend options). The following client identifiers are available:
+
+- `openai` — The OpenAI Chat API (e.g., GPT-3.5, GPT-4).
+- `anthropic` — Anthropic's Claude API.
+- `vllm` — vLLM (an open-source, self-hosted LLM serving system).
+- `litellm` — LiteLLM or other local lightweight LLM endpoints.
+- `openrouter` — OpenRouter (a proxy that is OpenAI-compatible, can route requests to multiple models).
+
+These enums are used in `LLMConfig.client` to specify which backend to use for a given chat thread.
+
+## Response Formats
+
+`ResponseFormat` is an enumeration that defines how the model's output should be interpreted or structured by the system. The main options include:
+
+- **`text`** – Plain text response from the LLM with no special formatting.
+- **`json_beg`** – The LLM is instructed to output a JSON response enclosed in Markdown code fences (for cases where you want the model to yield JSON, starting with ```json).
+- **`json_object`** – Expect a direct JSON object as the response (no code fences, just raw JSON).
+- **`structured_output`** – The LLM must produce JSON that matches a provided `StructuredTool` schema (as seen in _Structured Output_ usage).
+- **`tool`** – The LLM should call a single `CallableTool` to produce its answer (the result of the tool is the answer).
+- **`auto_tools`** – The LLM can choose to call any of the available tools (from a list) if it decides to, possibly calling none if not needed.
+- **`workflow`** – The LLM must execute a sequence of tools one after another (workflow mode), rather than giving an answer directly.
+
+These formats guide the behavior of the orchestrator and the LLM's output. By choosing the appropriate `ResponseFormat`, you inform the system how to handle the response (e.g., to expect a JSON or to wait for tool invocation steps).
+
+## Project Layout
+
+The MarketAgents (and underlying MultiInference) project is structured into several modules. Here is a brief overview of key files and directories:
+
+- **`ecs/`** – _Entity Component System_ related code.
+  - `entity.py` – Defines the `Entity` base class and the `EntityRegistry` (including logic for forking and tracking entities).
+  - `caregistry.py` – Defines the `CallableRegistry`, which registers tool functions and generates schemas for them.
+- **`threads/`** – Conversational threads and orchestration logic.
+  - `models.py` – Contains core classes such as `ChatThread`, `ChatMessage`, `LLMConfig`, `CallableTool`, `StructuredTool`, etc., which define the data models for chats and tools.
+  - `inference.py` – Implements the `InferenceOrchestrator` and the concurrency logic that schedules and executes LLM calls.
+- **`oai_parallel.py`** – The parallel request engine for OpenAI (and similar) APIs. Handles batching of requests, applying rate limits, and retry mechanisms for API calls.
+- **`clients/`** – Client-specific request/response definitions.
+  - `requests.py` – Utilities for converting ChatThreads into the raw JSON payloads expected by the LLM provider APIs, and for validating responses.
+  - `clients_models.py` – Pydantic models that describe the request and response formats for different providers (e.g., OpenAI, Anthropic), used internally for validation and structuring.
+
+This layout helps in navigating the codebase: for example, if you're looking to extend how a new provider is integrated, the `clients/` directory is a good place to start; if you want to understand how concurrency is handled, review `threads/inference.py`, and so on.

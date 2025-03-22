@@ -1,0 +1,67 @@
+---
+
+# Core Concepts
+
+Understanding the core architecture of MarketAgents is crucial for effectively building and managing agents. MarketAgents revolves around a few fundamental concepts: **Entities**, **Registries**, the **Chat Thread** model, **Tools**, and a **Concurrent Execution** engine. These concepts work together to ensure the system is robust, traceable, and flexible.
+
+## Entities and Versioning
+
+All persistent objects in MarketAgents (such as chat threads, messages, or tools) subclass an `Entity`. Each Entity has:
+
+- **`id`** – a unique identifier (UUID) for this specific version of the object.
+- **`lineage_id`** – a UUID grouping all versions (the entire history) of the object.
+- **`parent_id`** – a reference to the immediate predecessor object's id (the previous version).
+- Automatic **forking** behavior: whenever you modify an entity, a new version is created with a new `id`.
+
+When you retrieve an entity from a registry (explained below), the system provides a _warm copy_ (a mutable instance). Any changes to this warm copy (detected by comparing it to an internal _cold snapshot_) will trigger a fork, producing a new immutable record.
+
+**Why this matters:** The Entity model ensures an immutable, fully traceable record of changes across the system. You can always inspect or revert to earlier versions of conversations or data, which is especially important in a financial market context where auditability is key.
+
+## Registries
+
+MarketAgents maintains registries to keep track of entities and tools:
+
+1. **EntityRegistry:** Stores the immutable snapshots of each Entity. Every time an Entity is created or forked (new version), it's recorded in the registry. This allows you to retrieve any version by its `id` and to reconstruct the full lineage of changes for that entity.
+2. **CallableRegistry:** Stores references to tool callables (Python functions that agents can use). When you register a function as a tool, it's indexed here, and the system can automatically generate JSON schemas for the function's inputs and outputs (using type hints or Pydantic models). Tools can be synchronous or asynchronous functions.
+
+These registries enable dynamic lookup and management of state (for entities) and capabilities (for tools) throughout the system.
+
+## Chat Thread Model
+
+The central object for multi-turn conversations is the `ChatThread` (which is a type of Entity). A `ChatThread` represents an ongoing conversation or agent session and contains:
+
+- A **history**: a list of `ChatMessage` entities representing the dialogue (prompts and responses) so far.
+- An optional **system_prompt**: a special initial instruction or context for the conversation (e.g., setting the role or behavior of the agent).
+- An **llm_config**: an `LLMConfig` entity specifying which language model to use, and parameters like model name, token limits, temperature, etc.
+- A list of **tools**: any `CallableTool` or `StructuredTool` instances attached to this chat, which the agent is allowed to use during the conversation.
+- A **forced_output** (optional): a specific tool or schema that the LLM must use to format its response (used when you expect the answer in a particular format or via a specific tool).
+- A **workflow_step** (advanced use): an index to enforce multi-step tool workflows (used when orchestrating a sequence of tool calls as the output, explained later).
+
+Because `ChatThread` inherits from `Entity`, any change (like adding a message or updating the config) will create a new version, preserving the old state.
+
+## Tools
+
+In MarketAgents, "tools" are functions or schemas that an agent can call as part of its reasoning process. They are represented by specialized Entities:
+
+- **CallableTool:** A tool backed by a Python function. You register a Python function (with type-annotated parameters and return value, or with a Pydantic model) as a CallableTool. The function's name and docstring inform the LLM about its purpose. When the LLM decides to use this tool, the framework will handle converting the LLM's request into a Python function call (parsing arguments from JSON, executing the function, and returning the result).
+- **StructuredTool:** A tool defined by a JSON schema. This isn't a function the LLM calls; instead, the LLM is instructed to output data in a format that matches the schema. The framework will then validate the LLM's output against the schema (ensuring the response is well-formed).
+
+Tools are how MarketAgents enable actions and structured outputs. In a conversation, tools appear to the LLM like available functions (following the OpenAI or Anthropic function call interface). By attaching tools to a chat thread, you give the agent the ability to perform calculations, fetch data, or enforce output structure beyond what the base LLM can do on its own.
+
+## Concurrent Execution
+
+MarketAgents is built to handle multiple requests in parallel, which is essential for simulating multiple agents or processing many tasks concurrently. The **InferenceOrchestrator** (part of the underlying MultiInference engine) manages asynchronous calls to LLM providers. It ensures that parallel requests obey rate limits and efficiently utilizes resources.
+
+In practice, the orchestrator reads a batch of requests (each request represents an LLM invocation with a certain prompt and configuration) and sends them out concurrently. It takes care of:
+
+- Respecting provider rate limits (e.g., max requests per minute or tokens per minute for each API).
+- Retrying failed requests or those that hit rate-limit errors.
+- Queuing and scheduling requests so that bursts are handled gracefully.
+
+**High-level flow for concurrent inference:**
+
+1. You compile a list of requests (each usually corresponds to one ChatThread needing an LLM completion).
+2. The orchestrator sends these requests in parallel, subject to the concurrency and rate limits set for each provider.
+3. Responses are collected and returned (and can also be logged to files for further analysis).
+
+This concurrent execution model means you can simulate or coordinate many market agents acting at once, without manually juggling asyncio tasks or threads. The orchestrator abstracts that complexity away.

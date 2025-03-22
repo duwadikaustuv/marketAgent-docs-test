@@ -1,0 +1,39 @@
+---
+---
+
+# Installation Guide
+
+```python
+# Quick install command
+pip install market-agents
+```
+
+Step-by-Step Guide:
+
+---
+
+## title: Installation
+
+## Step-by-Step Guide
+
+1. **Clone repository**:
+
+````bash
+git clone https://github.com/marketagents-ai/MarketAgents.git
+cd MarketAgents
+
+2. **Install dependencies**:
+```bash
+pip install -e . -r requirements.txt
+
+3. **Configure environment**:
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+
+4. **Verification**:
+```bash
+import market_agents
+print(market_agents.__version__)
+
+````

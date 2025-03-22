@@ -1,0 +1,59 @@
+---
+
+# Advanced Features
+
+MarketAgents includes several advanced features for power users who need more control over their agent-based systems.
+
+## Custom Rate Limits
+
+Control the rate at which your agents can make requests to external APIs to prevent rate limiting and manage costs:
+
+```python
+from market_agents import RequestLimits
+
+limits = RequestLimits(
+    max_requests=500,
+    per_minute=60
+)
+
+# Apply the limits to your agent
+agent = Agent(request_limits=limits)
+```
+
+## Pydantic Integration
+
+MarketAgents leverages Pydantic for type-safe data validation. Define structured outputs for your agents to ensure they return data in the expected format:
+
+```python
+from pydantic import BaseModel
+
+class TradeDecision(BaseModel):
+    action: str  # "buy" or "sell"
+    quantity: int
+    price: float
+
+# Use the model with your agent
+result = agent.run(
+    prompt="Analyze the market and make a trade decision",
+    output_schema=TradeDecision
+)
+
+# Access the structured data
+print(f"Action: {result.action}")
+print(f"Quantity: {result.quantity}")
+print(f"Price: ${result.price}")
+```
+
+## Parallel Processing
+
+Execute multiple agent tasks concurrently to improve performance:
+
+```python
+from market_agents import parallel_run
+
+results = parallel_run([
+    agent1.analyze_task("Market sentiment analysis"),
+    agent2.analyze_task("Technical indicator check"),
+    agent3.analyze_task("News sentiment analysis")
+])
+```
